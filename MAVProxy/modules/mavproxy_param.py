@@ -544,7 +544,7 @@ class ParamState:
         # Ensure we have at least an action and a parameter
         if len(args) < 2:
             print("Not enough arguments")
-            print(f"param bitmask <{'/'.join(BITMASK_ACTIONS)}> <parameter> [bit-index]")
+            print(f"param bitmask <{'/'.join(BITMASK_ACTIONS)}> <parameter> [bit-index-1 ... bit-index-n]")
             return
 
         action = args[0]
@@ -585,17 +585,19 @@ class ParamState:
             return
 
         # The next argument is the bit_index - if it exists, handle it
-        bit_index = None
-        if len(args) >= 3:
+        bit_indices = []
+        while len(args) >= 3:
             try:
                 # If the bit index is available lets grab it
                 arg_bit_index = args[2]
+                # Remove the bit index from the args list
+                args.pop(2)
                 # Try to convert it to int
-                bit_index = int(arg_bit_index)
+                bit_indices.append(int(arg_bit_index))
             except ValueError:
-                print(f"Invalid bit index: {arg_bit_index}\n")
-
-        if bit_index is None:
+                print(f"Invalid bit index: {arg_bit_index}")
+    
+        if bit_indices == []:
             # No bit index was specified, but the parameter and action was.
             # Print the available bitmask information.
             print("%s: %s" % (uname, phelp.get('humanName')))
@@ -625,22 +627,23 @@ class ParamState:
             # We don't have enough information to modify the bitmask, so bail
             return
 
-        # Sanity check the bit index
-        if bit_index >= NUM_BITS_MAX:
-            print(f"Cannot perform bitmask action '{action}' on bit index {bit_index}.")
-            return
-
-        # We have enough information to try perform an action
-        if action == "toggle":
-            value = value ^ (1 << bit_index)
-        elif action == "set":
-            value = value | (1 << bit_index)
-        elif action == "clear":
-            value = value & ~(1 << bit_index)
-        else:
-            # We cannot toggle, set or clear
-            print("Invalid bitmask action")
-            return
+        # Cycle through the bit indices
+        for bit_index in bit_indices:
+            # Sanity check the bit index
+            if bit_index >= NUM_BITS_MAX:
+                print(f"Cannot perform bitmask action '{action}' on bit index {bit_index}.")
+                return
+            # We have enough information to perform an action
+            if action == BITMASK_ACTIONS[0]:  # "toggle"
+                value = value ^ (1 << bit_index)
+            elif action == BITMASK_ACTIONS[1]:  # "set"
+                value = value | (1 << bit_index)
+            elif action == BITMASK_ACTIONS[2]:  # "clear"
+                value = value & ~(1 << bit_index)
+            else:
+                # We cannot toggle, set or clear
+                print("Invalid bitmask action")
+                return
 
         # Update the parameter
         self.set_parameter(master, uname, value, attempts=3, param_type=ptype)
