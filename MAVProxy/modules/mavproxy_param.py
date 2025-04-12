@@ -607,13 +607,12 @@ class ParamState:
             out_v = []
             if bitmask_values is not None and len(bitmask_values):
                 for (n, v) in bitmask_values.items():
-                    if bit_index is None or bit_index == int(n):
-                        out_v.append(f"\t{int(n):3d} [{'x' if value & (1 << int(n)) else ' '}] : {v}")
+                    out_v.append(f"\t{int(n):3d} [{'x' if value & (1 << int(n)) else ' '}] : {v}")
                     remaining_bits &= ~(1 << int(n))
 
                 # Loop bits 0 to 31, checking if they are remaining, and append
                 for i in range(32):
-                    if (remaining_bits & (1 << i)) and ((bit_index is None) or (bit_index == i)):
+                    if (remaining_bits & (1 << i)):
                         out_v.append(f"\t{i:3d} [{'x' if value & (1 << i) else ' '}] : Unknownbit{i}")
 
             if out_v is not None and len(out_v) > 0:
@@ -621,8 +620,7 @@ class ParamState:
                 print("\n".join(out_v))
 
             # Finally, inform user of the error we experienced
-            if bit_index is None:
-                print("bit index is not specified")
+            print("bit index is not specified")
 
             # We don't have enough information to modify the bitmask, so bail
             return
