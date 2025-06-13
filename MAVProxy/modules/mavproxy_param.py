@@ -946,6 +946,15 @@ class ParamModule(mp_module.MPModule):
                 f"<bitmask> <toggle|set|clear> (PARAMETER) <{bitmask_indexes}>"
             ],
         )
+        self.add_command(
+            'p', self.cmd_param, "parameter handling", [
+                "<download|status>",
+                "<set|show|fetch|ftp|help|apropos|revert> (PARAMETER)",
+                "<load|save|savechanged|diff|forceload|ftpload> (FILENAME)",
+                "<set_xml_filepath> (FILEPATH)",
+                f"<bitmask> <toggle|set|clear> (PARAMETER) <{bitmask_indexes}>"
+            ],
+        )
         if mp_util.has_wxpython:
             self.menu = MPMenuSubMenu(
                 'Parameter',
