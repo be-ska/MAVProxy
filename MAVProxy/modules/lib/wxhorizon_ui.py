@@ -2,6 +2,7 @@ import time
 from MAVProxy.modules.lib.wxhorizon_util import Attitude, VFR_HUD, Global_Position_INT, BatteryInfo, FlightState, WaypointInfo, FPS
 from MAVProxy.modules.lib.wx_loader import wx
 import math, time
+import sys
 
 import matplotlib
 matplotlib.use('wxAgg')
@@ -155,7 +156,11 @@ class HorizonFrame(wx.Frame):
         '''Calculates the current font size and left position for the current window.'''
         self.ypx = self.figure.get_size_inches()[1]*self.figure.dpi
         self.xpx = self.figure.get_size_inches()[0]*self.figure.dpi
-        self.fontSize = self.vertSize*(self.ypx/2.0)
+        y_divisor = 2.0
+        if sys.platform == 'darwin':
+           # Mac: scale 4 needs divisor 6, scale 2 would need divisor 3
+            y_divisor = 6.0
+        self.fontSize = self.vertSize*(self.ypx/y_divisor)
         self.leftPos = self.axes.get_xlim()[0]
         self.rightPos = self.axes.get_xlim()[1]
     
