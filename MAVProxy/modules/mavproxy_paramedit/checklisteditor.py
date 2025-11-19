@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import wx
+from MAVProxy.modules.lib.wx_loader import wx
 import wx.grid as gridlib
 import math
 
