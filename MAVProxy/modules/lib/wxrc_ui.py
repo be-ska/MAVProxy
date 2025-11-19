@@ -6,19 +6,7 @@
 from MAVProxy.modules.lib.wx_loader import wx
 import wx.lib.agw.pygauge as PG
 import wx.lib.scrolledpanel
-from enum import Enum
-
-
-class PanelType(Enum):
-    SERVO_OUT = (0, "Servo Out", "Servo")
-    RC_IN = (1, "RC In", "RC")
-
-    def __new__(cls, value, display_string, short_string):
-        obj = object.__new__(cls)
-        obj._value_ = value
-        obj.display_string = display_string
-        obj.short_string = short_string
-        return obj
+from MAVProxy.modules.lib.wxrc import PanelType
 
 
 class RCPanel(wx.lib.scrolledpanel.ScrolledPanel):

@@ -5,6 +5,19 @@
 """
 from MAVProxy.modules.lib import multiproc
 import time
+from enum import Enum
+
+
+class PanelType(Enum):
+    SERVO_OUT = (0, "Servo Out", "Servo")
+    RC_IN = (1, "RC In", "RC")
+
+    def __new__(cls, value, display_string, short_string):
+        obj = object.__new__(cls)
+        obj._value_ = value
+        obj.display_string = display_string
+        obj.short_string = short_string
+        return obj
 
 
 class RCStatus():
