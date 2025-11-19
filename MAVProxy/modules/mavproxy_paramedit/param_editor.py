@@ -15,7 +15,7 @@ import time
 ParamEditorEvent = ph_event.ParamEditorEvent
 
 
-def child_task_main(mpstate, queue, lock, gui_queue, gui_lock, close_window_sem):
+def child_task_main(vehicle_name, moddebug, queue, lock, gui_queue, gui_lock, close_window_sem):
     '''child process - this holds GUI elements'''
     try:
         print("paramedit: child_task started")
@@ -37,19 +37,10 @@ def child_task_main(mpstate, queue, lock, gui_queue, gui_lock, close_window_sem)
         app.frame.set_event_queue_lock(lock)
         app.frame.set_gui_event_queue(gui_queue)
         app.frame.set_gui_event_queue_lock(gui_lock)
-        app.frame.get_vehicle_type(mpstate.vehicle_name)
+        app.frame.get_vehicle_type(vehicle_name)
         app.frame.set_close_window_semaphore(close_window_sem)
-        app.frame.redirect_err(mpstate.settings.moddebug)
+        app.frame.redirect_err(moddebug)
 
-        # Wait for param module to be loaded
-        print("paramedit: waiting for param module...")
-        param_mod = mpstate.module('param')
-        while param_mod is None:
-            time.sleep(0.1)
-            param_mod = mpstate.module('param')
-        print("paramedit: param module loaded")
-
-        app.frame.set_param_init(param_mod.mav_param, mpstate.vehicle_name)
         app.SetExitOnFrameDelete(True)
         print("paramedit: Showing frame...")
         app.frame.Show()
@@ -158,14 +149,16 @@ class ParamEditorMain(object):
         if platform.system() == 'Windows':
             self.child = threading.Thread(
                             target=child_task_main,
-                            args=(self.mpstate,
+                            args=(self.mpstate.vehicle_name,
+                                  self.mpstate.settings.moddebug,
                                   self.event_queue,
                                   self.event_queue_lock, self.gui_event_queue,
                                   self.gui_event_queue_lock, self.close_window))
         else:
             self.child = multiproc.Process(
                                 target=child_task_main,
-                                args=(self.mpstate,
+                                args=(self.mpstate.vehicle_name,
+                                      self.mpstate.settings.moddebug,
                                       self.event_queue,
                                       self.event_queue_lock, self.gui_event_queue,
                                       self.gui_event_queue_lock, self.close_window))
@@ -173,6 +166,9 @@ class ParamEditorMain(object):
         print("paramedit: Starting child process...")
         self.child.start()
         print("paramedit: Child process started")
+
+        # Send initial param data once param module is loaded
+        self.initial_params_sent = False
 
         self.event_thread = ParamEditorEventThread(
                             self, self.event_queue, self.event_queue_lock)
@@ -208,6 +204,14 @@ class ParamEditorMain(object):
         self.mpstate.param_editor.close()
 
     def idle_task(self):
+        # Send initial param data once param module is loaded
+        if not self.initial_params_sent and self.mpstate.module('param') is not None:
+            self.initial_params_sent = True
+            param_received = self.mpstate.module('param').mav_param
+            self.gui_event_queue.put(ParamEditorEvent(
+                ph_event.PEGE_READ_PARAM, param=param_received, vehicle=self.mpstate.vehicle_name))
+            print("paramedit: Initial param data sent to GUI")
+
         now = time.time()
         if now - self.last_unload_check_time > self.unload_check_interval:
             self.last_unload_check_time = now
