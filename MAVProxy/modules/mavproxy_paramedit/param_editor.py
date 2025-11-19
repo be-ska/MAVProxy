@@ -104,7 +104,9 @@ class ParamEditorMain(object):
                                       self.event_queue_lock, self.gui_event_queue,
                                       self.gui_event_queue_lock, self.close_window))
 
+        print("paramedit: Starting child process...")
         self.child.start()
+        print("paramedit: Child process started")
 
         self.event_thread = ParamEditorEventThread(
                             self, self.event_queue, self.event_queue_lock)
@@ -177,13 +179,18 @@ class ParamEditorMain(object):
     def child_task(self, queue, lock, gui_queue, gui_lock, close_window_sem):
         '''child process - this holds GUI elements'''
         try:
+            print("paramedit: child_task started")
             mp_util.child_close_fds()
 
             # Import wx_processguard before wx_loader to fix macOS threading issue
+            print("paramedit: importing wx_processguard...")
             from MAVProxy.modules.lib import wx_processguard  # noqa: F401
+            print("paramedit: importing wx...")
             from MAVProxy.modules.lib.wx_loader import wx
+            print("paramedit: importing param_editor_frame...")
             from MAVProxy.modules.mavproxy_paramedit import param_editor_frame
 
+            print("paramedit: creating wx.App...")
             self.app = wx.App(False)
             self.app.frame = param_editor_frame.ParamEditorFrame(
                 parent=None, id=wx.ID_ANY)
@@ -196,7 +203,9 @@ class ParamEditorMain(object):
             self.app.frame.redirect_err(self.mpstate.settings.moddebug)
             self.app.frame.set_param_init(self.mpstate.module('param').mav_param, self.mpstate.vehicle_name)
             self.app.SetExitOnFrameDelete(True)
+            print("paramedit: Showing frame...")
             self.app.frame.Show()
+            print("paramedit: Frame shown, starting MainLoop...")
 
             # start a thread to monitor the "close window" semaphore:
             class CloseWindowSemaphoreWatcher(threading.Thread):

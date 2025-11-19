@@ -32,8 +32,15 @@ class ParamEditorModule(mp_module.MPModule):
             # wait for parameter module to load
             if self.module('param') is None:
                 return
-            from MAVProxy.modules.mavproxy_paramedit import param_editor
-            self.pe_main = param_editor.ParamEditorMain(self.mpstate)
+            try:
+                from MAVProxy.modules.mavproxy_paramedit import param_editor
+                self.pe_main = param_editor.ParamEditorMain(self.mpstate)
+            except Exception as ex:
+                print("Error initializing paramedit: %s" % str(ex))
+                import traceback
+                traceback.print_exc()
+                self.needs_unloading = True
+                return
         if self.pe_main:
             if self.pe_main.needs_unloading:
                 self.needs_unloading = True
