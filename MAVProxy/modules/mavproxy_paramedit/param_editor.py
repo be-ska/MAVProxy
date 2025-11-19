@@ -15,6 +15,70 @@ import time
 ParamEditorEvent = ph_event.ParamEditorEvent
 
 
+def child_task_main(mpstate, queue, lock, gui_queue, gui_lock, close_window_sem):
+    '''child process - this holds GUI elements'''
+    try:
+        print("paramedit: child_task started")
+        mp_util.child_close_fds()
+
+        # Import wx_processguard before wx_loader to fix macOS threading issue
+        print("paramedit: importing wx_processguard...")
+        from MAVProxy.modules.lib import wx_processguard  # noqa: F401
+        print("paramedit: importing wx...")
+        from MAVProxy.modules.lib.wx_loader import wx
+        print("paramedit: importing param_editor_frame...")
+        from MAVProxy.modules.mavproxy_paramedit import param_editor_frame
+
+        print("paramedit: creating wx.App...")
+        app = wx.App(False)
+        app.frame = param_editor_frame.ParamEditorFrame(
+            parent=None, id=wx.ID_ANY)
+        app.frame.set_event_queue(queue)
+        app.frame.set_event_queue_lock(lock)
+        app.frame.set_gui_event_queue(gui_queue)
+        app.frame.set_gui_event_queue_lock(gui_lock)
+        app.frame.get_vehicle_type(mpstate.vehicle_name)
+        app.frame.set_close_window_semaphore(close_window_sem)
+        app.frame.redirect_err(mpstate.settings.moddebug)
+
+        # Wait for param module to be loaded
+        print("paramedit: waiting for param module...")
+        param_mod = mpstate.module('param')
+        while param_mod is None:
+            time.sleep(0.1)
+            param_mod = mpstate.module('param')
+        print("paramedit: param module loaded")
+
+        app.frame.set_param_init(param_mod.mav_param, mpstate.vehicle_name)
+        app.SetExitOnFrameDelete(True)
+        print("paramedit: Showing frame...")
+        app.frame.Show()
+        print("paramedit: Frame shown, starting MainLoop...")
+
+        # start a thread to monitor the "close window" semaphore:
+        class CloseWindowSemaphoreWatcher(threading.Thread):
+            def __init__(self, app_instance, sem):
+                threading.Thread.__init__(self)
+                self.app = app_instance
+                self.sem = sem
+
+            def run(self):
+                self.sem.acquire(True)
+                self.app.ExitMainLoop()
+        watcher_thread = CloseWindowSemaphoreWatcher(app, close_window_sem)
+        watcher_thread.start()
+
+        app.MainLoop()
+        # tell the watcher it is OK to quit:
+        close_window_sem.release()
+        watcher_thread.join()
+    except Exception as ex:
+        print("Error in paramedit child_task: %s" % str(ex))
+        import traceback
+        traceback.print_exc()
+        close_window_sem.release()
+
+
 class ParamEditorEventThread(threading.Thread):
     def __init__(self, mp_paramedit, queue, lock):
         threading.Thread.__init__(self)
@@ -93,14 +157,16 @@ class ParamEditorMain(object):
 
         if platform.system() == 'Windows':
             self.child = threading.Thread(
-                            target=self.child_task,
-                            args=(self.event_queue,
+                            target=child_task_main,
+                            args=(self.mpstate,
+                                  self.event_queue,
                                   self.event_queue_lock, self.gui_event_queue,
                                   self.gui_event_queue_lock, self.close_window))
         else:
             self.child = multiproc.Process(
-                                target=self.child_task,
-                                args=(self.event_queue,
+                                target=child_task_main,
+                                args=(self.mpstate,
+                                      self.event_queue,
                                       self.event_queue_lock, self.gui_event_queue,
                                       self.gui_event_queue_lock, self.close_window))
 
@@ -175,60 +241,6 @@ class ParamEditorMain(object):
                     self.fltmode_rc = rc_received
                     self.gui_event_queue.put(ParamEditorEvent(
                         ph_event.PEGE_RCIN, rcin=rc_received))
-
-    def child_task(self, queue, lock, gui_queue, gui_lock, close_window_sem):
-        '''child process - this holds GUI elements'''
-        try:
-            print("paramedit: child_task started")
-            mp_util.child_close_fds()
-
-            # Import wx_processguard before wx_loader to fix macOS threading issue
-            print("paramedit: importing wx_processguard...")
-            from MAVProxy.modules.lib import wx_processguard  # noqa: F401
-            print("paramedit: importing wx...")
-            from MAVProxy.modules.lib.wx_loader import wx
-            print("paramedit: importing param_editor_frame...")
-            from MAVProxy.modules.mavproxy_paramedit import param_editor_frame
-
-            print("paramedit: creating wx.App...")
-            self.app = wx.App(False)
-            self.app.frame = param_editor_frame.ParamEditorFrame(
-                parent=None, id=wx.ID_ANY)
-            self.app.frame.set_event_queue(queue)
-            self.app.frame.set_event_queue_lock(lock)
-            self.app.frame.set_gui_event_queue(gui_queue)
-            self.app.frame.set_gui_event_queue_lock(gui_lock)
-            self.app.frame.get_vehicle_type(self.mpstate.vehicle_name)
-            self.app.frame.set_close_window_semaphore(close_window_sem)
-            self.app.frame.redirect_err(self.mpstate.settings.moddebug)
-            self.app.frame.set_param_init(self.mpstate.module('param').mav_param, self.mpstate.vehicle_name)
-            self.app.SetExitOnFrameDelete(True)
-            print("paramedit: Showing frame...")
-            self.app.frame.Show()
-            print("paramedit: Frame shown, starting MainLoop...")
-
-            # start a thread to monitor the "close window" semaphore:
-            class CloseWindowSemaphoreWatcher(threading.Thread):
-                def __init__(self, task, sem):
-                    threading.Thread.__init__(self)
-                    self.task = task
-                    self.sem = sem
-
-                def run(self):
-                    self.sem.acquire(True)
-                    self.task.app.ExitMainLoop()
-            watcher_thread = CloseWindowSemaphoreWatcher(self, close_window_sem)
-            watcher_thread.start()
-
-            self.app.MainLoop()
-            # tell the watcher it is OK to quit:
-            close_window_sem.release()
-            watcher_thread.join()
-        except Exception as ex:
-            print("Error in paramedit child_task: %s" % str(ex))
-            import traceback
-            traceback.print_exc()
-            close_window_sem.release()
 
     def close(self):
         '''close the Parameter Editor window'''
