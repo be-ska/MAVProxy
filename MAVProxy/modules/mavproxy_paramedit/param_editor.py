@@ -10,8 +10,6 @@ from MAVProxy.modules.lib import mp_util
 from MAVProxy.modules.lib import multiproc
 from MAVProxy.modules.mavproxy_paramedit import ph_event
 import threading
-from ..lib.wx_loader import wx
-from MAVProxy.modules.mavproxy_paramedit import param_editor_frame
 from pymavlink import mavutil
 import time
 ParamEditorEvent = ph_event.ParamEditorEvent
@@ -179,6 +177,12 @@ class ParamEditorMain(object):
     def child_task(self, queue, lock, gui_queue, gui_lock, close_window_sem):
         '''child process - this holds GUI elements'''
         mp_util.child_close_fds()
+
+        # Import wx_processguard before wx_loader to fix macOS threading issue
+        from MAVProxy.modules.lib import wx_processguard  # noqa: F401
+        from MAVProxy.modules.lib.wx_loader import wx
+        from MAVProxy.modules.mavproxy_paramedit import param_editor_frame
+
         self.app = wx.App(False)
         self.app.frame = param_editor_frame.ParamEditorFrame(
             parent=None, id=wx.ID_ANY)
