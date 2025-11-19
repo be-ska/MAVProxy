@@ -373,18 +373,15 @@ class MPSlipMapPanel(wx.Panel):
         # display for lat/lon/elevation
         self.position = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY)
         if os.name == 'nt':
-            self.position.SetValue("line 1\nline 2\nline 3\n")
+            self.position.SetValue("line 1\nline 2\n")
             size = self.position.GetBestSize()
             self.position.SetMinSize(size)
             self.position.SetValue("")
         else:
-            # Use actual text to calculate size for 3 lines
-            self.position.SetValue("line 1\nline 2\nline 3\n")
-            size = self.position.GetBestSize()
-            # Set both min size and initial size to ensure it shows properly on macOS
-            self.position.SetMinSize(size)
-            self.position.SetInitialSize(size)
-            self.position.SetValue("")
+            textsize = self.position.GetTextExtent('line 1')
+            textsize.Scale(1, 3) # show 3 lines
+            self.position.SetMinSize(textsize)
+
 
         self.mainSizer.AddSpacer(2)
         self.mainSizer.Add(self.position, flag=wx.LEFT | wx.BOTTOM | wx.GROW, border=0)
