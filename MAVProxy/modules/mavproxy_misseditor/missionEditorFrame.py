@@ -57,7 +57,11 @@ class ListCtrlComboPopup(wx.ComboPopup):
             self.curitem = item
 
     def OnLeftDown(self, evt):
-        self.value = self.curitem
+        # Get the item at the click position to ensure we select what was clicked
+        item, flags = self.lc.HitTest(evt.GetPosition())
+        if item >= 0:
+            self.value = item
+            self.curitem = item
         self.Dismiss()
 
     # This is called immediately after construction finishes.  You can
