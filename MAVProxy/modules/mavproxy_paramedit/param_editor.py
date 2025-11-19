@@ -18,18 +18,13 @@ ParamEditorEvent = ph_event.ParamEditorEvent
 def child_task_main(vehicle_name, moddebug, queue, lock, gui_queue, gui_lock, close_window_sem):
     '''child process - this holds GUI elements'''
     try:
-        print("paramedit: child_task started")
         mp_util.child_close_fds()
 
         # Import wx_processguard before wx_loader to fix macOS threading issue
-        print("paramedit: importing wx_processguard...")
         from MAVProxy.modules.lib import wx_processguard  # noqa: F401
-        print("paramedit: importing wx...")
         from MAVProxy.modules.lib.wx_loader import wx
-        print("paramedit: importing param_editor_frame...")
         from MAVProxy.modules.mavproxy_paramedit import param_editor_frame
 
-        print("paramedit: creating wx.App...")
         app = wx.App(False)
         app.frame = param_editor_frame.ParamEditorFrame(
             parent=None, id=wx.ID_ANY)
@@ -42,9 +37,7 @@ def child_task_main(vehicle_name, moddebug, queue, lock, gui_queue, gui_lock, cl
         app.frame.redirect_err(moddebug)
 
         app.SetExitOnFrameDelete(True)
-        print("paramedit: Showing frame...")
         app.frame.Show()
-        print("paramedit: Frame shown, starting MainLoop...")
 
         # start a thread to monitor the "close window" semaphore:
         class CloseWindowSemaphoreWatcher(threading.Thread):
@@ -163,9 +156,7 @@ class ParamEditorMain(object):
                                       self.event_queue_lock, self.gui_event_queue,
                                       self.gui_event_queue_lock, self.close_window))
 
-        print("paramedit: Starting child process...")
         self.child.start()
-        print("paramedit: Child process started")
 
         # Send initial param data once param module is loaded
         self.initial_params_sent = False
@@ -210,7 +201,6 @@ class ParamEditorMain(object):
             param_received = self.mpstate.module('param').mav_param
             self.gui_event_queue.put(ParamEditorEvent(
                 ph_event.PEGE_READ_PARAM, param=param_received, vehicle=self.mpstate.vehicle_name))
-            print("paramedit: Initial param data sent to GUI")
 
         now = time.time()
         if now - self.last_unload_check_time > self.unload_check_interval:
