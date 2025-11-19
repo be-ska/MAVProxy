@@ -378,7 +378,8 @@ class MPSlipMapPanel(wx.Panel):
             self.position.SetMinSize(size)
             self.position.SetValue("")
         else:
-            textsize = tuple(self.position.GetFullTextExtent('line 1\nline 2\n')[0:2])
+            textsize = self.position.GetTextExtent('line 1')
+            textsize.Scale(1, 3) # show 3 lines
             self.position.SetMinSize(textsize)
 
         self.mainSizer.AddSpacer(2)
