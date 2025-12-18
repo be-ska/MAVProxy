@@ -63,11 +63,12 @@ class WrapFileHandle(object):
         # capture the filehandle state
         self._name = self._filehandle.name
         self._mode = self._filehandle.mode
-        self._encoding = self._filehandle.encoding
-        self._errors = self._filehandle.errors
-        self._newlines = self._filehandle.newlines
+        # encoding, errors, and newlines only exist on text file handles, not binary
+        self._encoding = getattr(self._filehandle, 'encoding', None)
+        self._errors = getattr(self._filehandle, 'errors', None)
+        self._newlines = getattr(self._filehandle, 'newlines', None)
         self._offset = self._filehandle.tell()
-        
+
         # copy the dict since we change it
         odict = self.__dict__.copy()
 
@@ -83,8 +84,13 @@ class WrapFileHandle(object):
         encoding = dict['_encoding']
         errors = dict['_errors']
         newlines = dict['_newlines']
-        filehandle = open(name, mode=mode, encoding=encoding, errors=errors, newline=newlines)
-        
+
+        # only pass encoding-related args for text files (when encoding is not None)
+        if encoding is not None:
+            filehandle = open(name, mode=mode, encoding=encoding, errors=errors, newline=newlines)
+        else:
+            filehandle = open(name, mode=mode)
+
         # set the seek pointer
         offset = dict['_offset']
         filehandle.seek(offset)
